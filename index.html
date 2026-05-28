@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Подарунок відкриється після гри</title>
+  <style>
+    :root {
+      --red: #d71920;
+      --deep-red: #8e0810;
+      --soft-red: #ff4b55;
+      --white: #fffafa;
+      --ink: #321014;
+      --muted: rgba(50,16,20,.68);
+      --shadow: rgba(142,8,16,.22);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% 12%, rgba(215,25,32,.20), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(255,75,85,.24), transparent 30%),
+        radial-gradient(circle at 50% 92%, rgba(215,25,32,.16), transparent 38%),
+        linear-gradient(135deg, #fff, #ffe8e8 46%, #fff);
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(215,25,32,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(215,25,32,.045) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(circle at center, black, transparent 78%);
+    }
+
+    .app {
+      width: min(100vw, 760px);
+      min-height: 100svh;
+      margin: 0 auto;
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .screen {
+      width: min(100%, 560px);
+      display: none;
+      position: relative;
+      z-index: 3;
+    }
+
+    .screen.active {
+      display: block;
+      animation: show .5s ease both;
+    }
+
+    @keyframes show {
+      from { opacity: 0; transform: translateY(18px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .card {
+      border: 1px solid rgba(215,25,32,.16);
+      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,245,245,.78));
+      box-shadow: 0 24px 80px var(--shadow);
+      backdrop-filter: blur(22px);
+      border-radius: 32px;
+      padding: clamp(24px, 6vw, 42px);
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: auto -12% -36% -12%;
+      height: 220px;
+      background: radial-gradient(circle, rgba(215,25,32,.16), transparent 68%);
+      pointer-events: none;
+    }
+
+    .kicker {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(215,25,32,.08);
+      border: 1px solid rgba(215,25,32,.15);
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--deep-red);
+      margin-bottom: 18px;
+      font-weight: 850;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 9vw, 64px);
+      line-height: .95;
+      letter-spacing: -.06em;
+      color: var(--ink);
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 span {
+      display: block;
+      background: linear-gradient(90deg, var(--deep-red), var(--red), var(--soft-red));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    p {
+      margin: 18px auto 0;
+      max-width: 450px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    button, .download-btn {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(135deg, var(--red), var(--deep-red));
+      border-radius: 999px;
+      padding: 15px 22px;
+      min-height: 50px;
+      font-weight: 850;
+      font-size: 15px;
+      text-decoration: none;
+      box-shadow: 0 14px 34px rgba(215,25,32,.25);
+      transition: transform .18s ease, filter .18s ease;
+    }
+
+    button:hover, .download-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.04);
+    }
+
+    .ghost-btn {
+      background: rgba(255,255,255,.78);
+      color: var(--deep-red);
+      border: 1px solid rgba(215,25,32,.22);
+      box-shadow: none;
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 13px;
+      color: rgba(50,16,20,.52);
+      position: relative;
+      z-index: 1;
+    }
+
+    .game-wrap {
+      width: 100vw;
+      height: 100svh;
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      display: none;
+      z-index: 2;
+    }
+
+    .game-wrap.active {
+      display: block;
+    }
+
+    .game-wrap.paused .falling {
+      animation-play-state: paused;
+    }
+
+    .hud {
+      position: fixed;
+      z-index: 10;
+      left: 50%;
+      top: 14px;
+      transform: translateX(-50%);
+      width: min(calc(100vw - 28px), 720px);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .pill {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(215,25,32,.16);
+      backdrop-filter: blur(16px);
+      font-weight: 900;
+      font-size: 14px;
+      box-shadow: 0 12px 38px rgba(142,8,16,.13);
+      color: var(--deep-red);
+      white-space: nowrap;
+    }
+
+    .pill small {
+      color: rgba(50,16,20,.54);
+      font-weight: 800;
+    }
+
+    .progress-stack {
+      position: fixed;
+      z-index: 10;
+      left: 50%;
+      top: 66px;
+      transform: translateX(-50%);
+      width: min(calc(100vw - 36px), 680px);
+      display: grid;
+      gap: 8px;
+    }
+
+    .progress {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.66);
+      overflow: hidden;
+      border: 1px solid rgba(215,25,32,.12);
+      box-shadow: 0 8px 26px rgba(142,8,16,.08);
+    }
+
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--red), var(--soft-red));
+      border-radius: inherit;
+      transition: width .25s ease;
+    }
+
+    .bar.letter-bar {
+      background: linear-gradient(90deg, var(--deep-red), #ff9aa1);
+    }
+
+    .field {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .falling {
+      position: absolute;
+      top: -150px;
+      user-select: none;
+      touch-action: manipulation;
+      cursor: pointer;
+      border: 0;
+      animation-name: fall;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+      will-change: transform;
+    }
+
+    .flower {
+      width: 78px;
+      height: 78px;
+      display: grid;
+      place-items: center;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      font-size: 58px;
+      line-height: 1;
+      filter: drop-shadow(0 10px 14px rgba(142,8,16,.16));
+    }
+
+    .flower::before {
+      content: "🌹";
+      display: block;
+      transform: translateY(-1px);
+    }
+
+    .flower::after {
+      content: none;
+    }
+
+    .letter {
+      width: 190px;
+      min-height: 124px;
+      padding: 17px 16px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.96);
+      color: var(--deep-red);
+      border: 1px solid rgba(215,25,32,.2);
+      box-shadow: 0 18px 38px rgba(142,8,16,.16);
+      font-size: 14px;
+      line-height: 1.3;
+      font-weight: 850;
+      text-align: left;
+      transform-origin: center;
+    }
+
+    .letter::before {
+      content: "";
+      display: block;
+      height: 8px;
+      margin: -2px -2px 8px;
+      border-radius: 999px;
+      background: repeating-linear-gradient(90deg, var(--red) 0 12px, white 12px 24px);
+      border: 1px solid rgba(215,25,32,.14);
+    }
+
+    @keyframes fall {
+      to { transform: translateY(calc(100svh + 210px)) rotate(var(--fall-rotate, 260deg)); }
+    }
+
+    .pop {
+      position: absolute;
+      z-index: 15;
+      pointer-events: none;
+      color: var(--deep-red);
+      font-weight: 950;
+      font-size: 14px;
+      text-shadow: 0 2px 16px rgba(255,255,255,.75);
+      animation: pop .75s ease forwards;
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: translate(-50%, -30%) scale(.7); }
+      25% { opacity: 1; }
+      to { opacity: 0; transform: translate(-50%, -120%) scale(1.15); }
+    }
+
+    .letter-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(255, 235, 235, .62);
+      backdrop-filter: blur(10px);
+    }
+
+    .letter-modal.active {
+      display: grid;
+      animation: show .28s ease both;
+    }
+
+    .letter-card {
+      width: min(100%, 430px);
+      border-radius: 28px;
+      padding: 26px;
+      background: linear-gradient(180deg, #fff, #fff0f0);
+      border: 1px solid rgba(215,25,32,.22);
+      box-shadow: 0 26px 80px rgba(142,8,16,.22);
+      text-align: left;
+      color: var(--ink);
+      position: relative;
+    }
+
+    .letter-card::before {
+      content: "";
+      display: block;
+      height: 12px;
+      margin: -4px -4px 18px;
+      border-radius: 999px;
+      background: repeating-linear-gradient(90deg, var(--red) 0 16px, white 16px 32px);
+      border: 1px solid rgba(215,25,32,.14);
+    }
+
+    .letter-card .label {
+      color: rgba(50,16,20,.5);
+      margin-bottom: 10px;
+    }
+
+    .letter-card-text {
+      font-size: clamp(22px, 7vw, 34px);
+      line-height: 1.08;
+      letter-spacing: -.04em;
+      color: var(--deep-red);
+      font-weight: 950;
+    }
+
+    .letter-card button {
+      margin-top: 24px;
+      width: 100%;
+    }
+
+    .ticket {
+      margin: 28px auto 0;
+      max-width: 430px;
+      border-radius: 24px;
+      padding: 22px;
+      background:
+        radial-gradient(circle at 0% 50%, transparent 13px, rgba(215,25,32,.08) 14px),
+        radial-gradient(circle at 100% 50%, transparent 13px, rgba(215,25,32,.08) 14px),
+        linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,235,235,.86));
+      border: 1px dashed rgba(215,25,32,.42);
+      text-align: left;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 18px 44px rgba(142,8,16,.12);
+    }
+
+    .ticket::before {
+      content: "";
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 50%;
+      border-top: 1px dashed rgba(215,25,32,.26);
+    }
+
+    .ticket.final-hint::before {
+      display: none;
+    }
+
+    .ticket.final-hint .ticket-top {
+      padding-bottom: 0;
+    }
+
+    .ticket-top, .ticket-bottom {
+      position: relative;
+      z-index: 2;
+    }
+
+    .ticket-top {
+      padding-bottom: 24px;
+    }
+
+    .ticket-bottom {
+      padding-top: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .label {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(50,16,20,.48);
+      margin-bottom: 4px;
+      font-weight: 900;
+    }
+
+    .value {
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 950;
+      color: var(--deep-red);
+    }
+
+    .confetti {
+      position: fixed;
+      top: -20px;
+      width: 10px;
+      height: 16px;
+      border-radius: 4px;
+      opacity: .95;
+      pointer-events: none;
+      z-index: 20;
+      animation: confetti linear forwards;
+    }
+
+    @keyframes confetti {
+      to { transform: translateY(110svh) rotate(720deg); opacity: 0; }
+    }
+
+    .float-note {
+      position: fixed;
+      z-index: 0;
+      opacity: .12;
+      font-size: clamp(46px, 12vw, 120px);
+      animation: drift 10s ease-in-out infinite alternate;
+      pointer-events: none;
+      color: var(--red);
+    }
+
+    .float-note:nth-child(1) { left: 5%; top: 10%; animation-delay: -2s; }
+    .float-note:nth-child(2) { right: 5%; top: 22%; animation-delay: -5s; }
+    .float-note:nth-child(3) { left: 18%; bottom: 6%; animation-delay: -1s; }
+
+    @keyframes drift {
+      from { transform: translateY(-12px) rotate(-8deg); }
+      to { transform: translateY(18px) rotate(8deg); }
+    }
+
+    @media (max-width: 520px) {
+      .app { padding: 14px; }
+      .card { border-radius: 26px; }
+      .hud { grid-template-columns: 1fr; top: 10px; }
+      .progress-stack { top: 154px; }
+      .letter { width: 160px; min-height: 110px; font-size: 13px; }
+      .ticket-bottom { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Фінальна механіка:
+    1. Гра відкриває підказку до кодового слова.
+    2. Квитки не зберігаються в GitHub.
+    3. Подруга повертається в Telegram-бота й пише кодове слово.
+    4. Бот перевіряє слово і надсилає квитки.
+  -->
+
+  <div class="float-note">✿</div>
+  <div class="float-note">♡</div>
+  <div class="float-note">✉</div>
+
+  <main class="app" id="app">
+    <section class="screen active" id="startScreen">
+      <div class="card">
+        <div class="kicker">🎁 birthday quest</div>
+        <h1>Збери троянди <span>і прочитай листи</span></h1>
+        <p>
+          Щоб дістатися до подарунка, треба зібрати 101 троянду і відкрити 20 маленьких, але таких особливих листів.
+        </p>
+        <div class="btns">
+          <button id="startBtn">Почати гру</button>
+          <button class="ghost-btn" id="rulesBtn">Як це працює</button>
+        </div>
+        <div class="hint">Ти неймовірна кожного дня!</div>
+      </div>
+    </section>
+
+    <section class="screen" id="rulesScreen">
+      <div class="card">
+        <div class="kicker">як це працює</div>
+        <h1>Збери троянди <span>і прочитай листи</span></h1>
+        <p>
+          Гра без програшу й таймера. Просто лови троянди у своєму темпі.
+          Листи з’являтимуться поступово після зібраних троянд. Коли зловиш лист — гра зупиниться, щоб ти могла його прочитати.
+          <br><br>
+          Щоб відкрити фінал, треба зібрати всі 101 троянду і прочитати всі 20 листів.
+        </p>
+        <div class="btns">
+          <button id="rulesStartBtn">Я готова</button>
+          <button class="ghost-btn" id="backBtn">Назад</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="game-wrap" id="gameWrap" aria-label="Ігрове поле">
+      <div class="hud">
+        <div class="pill"><small>Троянди</small> <span id="score">0</span>/101</div>
+        <div class="pill"><small>Листи</small> <span id="lettersRead">0</span>/<span id="lettersTotal">0</span></div>
+      </div>
+
+      <div class="progress-stack">
+        <div class="progress" title="Прогрес троянд"><div class="bar" id="flowerBar"></div></div>
+        <div class="progress" title="Прогрес листів"><div class="bar letter-bar" id="letterBar"></div></div>
+      </div>
+
+      <div class="field" id="field"></div>
+      <div class="letter-modal" id="letterModal" aria-hidden="true">
+        <div class="letter-card" role="dialog" aria-modal="true" aria-labelledby="letterTitle">
+          <div class="label" id="letterTitle">Лист для Квіточки</div>
+          <div class="letter-card-text" id="openedLetterText"></div>
+          <button id="releaseLetterBtn">Забрати в серце й ловити далі</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="winScreen">
+      <div class="card">
+        <div class="kicker">фінал відкрито ✨</div>
+        <h1>З днем народження!</h1>
+        <p>
+          Подаруночок уже майже твій!<br>
+          Залишився останній маленький крок!
+        </p>
+
+        <div class="ticket final-hint" aria-label="Підказка до кодового слова">
+          <div class="ticket-top">
+            <div class="label">Підказка до кодового слова</div>
+            <div class="value">Згадай таке коротке, але найсмішніше слово, з якого Морква сміється досі як згадає.</div>
+          </div>
+        </div>
+
+        <div class="btns">
+          <a class="download-btn" href="https://t.me/pivoikvitka_bot?start=gift">Написати кодове слово в бот</a>
+          <button class="ghost-btn" id="againBtn">Зіграти ще раз</button>
+        </div>
+        <div class="hint">Напиши це слово в Telegram-боті з маленької літери — і він відкриє подарунок.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Налаштування гри
+    const TARGET_FLOWERS = 101;
+    const SPAWN_EVERY_MS = 250;
+    const MAX_ACTIVE_FLOWERS = 42;
+    const MAX_ACTIVE_LETTERS = 4;
+    const FIRST_LETTER_AFTER_FLOWERS = 3;
+    const LETTER_UNLOCK_STEP = 5;
+
+    const screens = {
+      start: document.getElementById("startScreen"),
+      rules: document.getElementById("rulesScreen"),
+      win: document.getElementById("winScreen"),
+    };
+
+    const gameWrap = document.getElementById("gameWrap");
+    const field = document.getElementById("field");
+    const scoreEl = document.getElementById("score");
+    const lettersReadEl = document.getElementById("lettersRead");
+    const lettersTotalEl = document.getElementById("lettersTotal");
+        const flowerBarEl = document.getElementById("flowerBar");
+    const letterBarEl = document.getElementById("letterBar");
+    const letterModal = document.getElementById("letterModal");
+    const openedLetterText = document.getElementById("openedLetterText");
+    const releaseLetterBtn = document.getElementById("releaseLetterBtn");
+
+    let flowersCollected = 0;
+    let lettersRead = 0;
+    let spawnTimer = null;
+    let playing = false;
+    let paused = false;
+    let readGreetingIndexes = new Set();
+    let activeGreetingIndexes = new Set();
+    let activeFlowers = 0;
+    let activeLetters = 0;
+    let letterBurstStarted = false;
+
+    const greetings = [
+      "Якщо ти чекала знак, то це він: квіти вже сипляться з неба до твоїх ніг",
+      "Якщо раптом захочеться усміхнутись — не стримуйся, це обов'язково",
+      "Ти не просто класна. Ти класна так, що довелось робити окрему гру",
+      "Тобі офіційно дозволено сяяти так сильно, щоб всім навколо довелось вдягати сонцезахисні окуляри",
+      "Нехай у тебе буде багато любові, світла і класних людей поруч",
+      "Нехай усі хороші новини знаходять тебе першою",
+      "Бажаю тобі року, у якому буде купа сміху, свободи і моментів, коли серце каже: “ось воно”",
+      "Цей лист передає найтепліші обійми",
+      "Нехай всі плани збуваються, коли ти ще нічого не підозрюєш",
+      "Нехай попереду буде багато днів саме таких, як треба",
+      "Уяви, що зараз десь маленький хор жаб співає тобі “з днем народження”",
+      "Ну щастя, здоровля, йобана, як без цього",
+      "Цей лист падав довго, щоб сказати: ти дуже дорога для мене людина",
+      "Все, чого ти бажаєш, вже насправді існує попереду",
+      "Цей лист пережив падіння, щоб сказати тобі, що ти неймовірна",
+      "Тобі пасує радість, відпочинок, квіти і трохи пригод",
+      "Мій захват від тебе не поміститься у велику коробку Нової пошти",
+      "Десь поруч уже чекають музика, пиво і чебуреки",
+      "Квітка, цей день має бути не просто хорошим, а легендарним",
+      "Вітаю! Фінальний лист прибув службою доставки тепла і дурниць"
+    ];
+
+    lettersTotalEl.textContent = greetings.length;
+
+    function showScreen(name) {
+      Object.values(screens).forEach(screen => screen.classList.remove("active"));
+      gameWrap.classList.remove("active");
+
+      if (name === "game") {
+        gameWrap.classList.add("active");
+      } else {
+        screens[name].classList.add("active");
+      }
+    }
+
+    function updateHud() {
+      const shownFlowers = Math.min(flowersCollected, TARGET_FLOWERS);
+      scoreEl.textContent = shownFlowers;
+      lettersReadEl.textContent = lettersRead;
+      lettersTotalEl.textContent = greetings.length;
+
+      flowerBarEl.style.width = `${Math.min((shownFlowers / TARGET_FLOWERS) * 100, 100)}%`;
+      letterBarEl.style.width = `${Math.min((lettersRead / greetings.length) * 100, 100)}%`;
+
+    }
+
+    function startGame() {
+      clearGame();
+      flowersCollected = 0;
+      lettersRead = 0;
+      readGreetingIndexes = new Set();
+      activeGreetingIndexes = new Set();
+      activeFlowers = 0;
+      activeLetters = 0;
+      letterBurstStarted = false;
+      paused = false;
+      playing = true;
+      gameWrap.classList.remove("paused");
+      letterModal.classList.remove("active");
+      letterModal.setAttribute("aria-hidden", "true");
+      updateHud();
+      showScreen("game");
+
+      spawnTimer = setInterval(spawnWave, SPAWN_EVERY_MS);
+      for (let i = 0; i < 10; i++) setTimeout(spawnWave, i * 120);
+    }
+
+    function clearGame() {
+      playing = false;
+      paused = false;
+      clearInterval(spawnTimer);
+      spawnTimer = null;
+      field.innerHTML = "";
+      gameWrap.classList.remove("paused");
+      letterModal.classList.remove("active");
+      letterModal.setAttribute("aria-hidden", "true");
+    }
+
+    function spawnWave() {
+      if (!playing || paused) return;
+
+      if (flowersCollected >= TARGET_FLOWERS) {
+        startLetterBurst();
+        checkCompletion();
+        return;
+      }
+
+      const flowerCount = 3 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < flowerCount; i++) {
+        setTimeout(spawnFlower, i * 55);
+      }
+
+      if (lettersRead < getUnlockedLetterCount() && activeLetters < 2 && Math.random() < .72) {
+        setTimeout(spawnLetter, 120);
+      }
+    }
+
+    function startLetterBurst() {
+      if (lettersRead >= greetings.length) return;
+      letterBurstStarted = true;
+
+      const unlockedCount = getUnlockedLetterCount();
+      const missingIndexes = greetings
+        .map((_, index) => index)
+        .filter(index => index < unlockedCount)
+        .filter(index => !readGreetingIndexes.has(index) && !activeGreetingIndexes.has(index));
+
+      const freeSlots = Math.max(MAX_ACTIVE_LETTERS - activeLetters, 0);
+      const lettersToSpawn = missingIndexes.slice(0, freeSlots);
+
+      lettersToSpawn.forEach((_, i) => {
+        setTimeout(spawnLetter, i * 180);
+      });
+    }
+
+    function getUnlockedLetterCount() {
+      if (flowersCollected < FIRST_LETTER_AFTER_FLOWERS) return 0;
+      return Math.min(
+        greetings.length,
+        Math.floor((flowersCollected - FIRST_LETTER_AFTER_FLOWERS) / LETTER_UNLOCK_STEP) + 1
+      );
+    }
+
+    function getSafeX(width, rotationSafeZone = 32) {
+      const fieldWidth = field.clientWidth || window.innerWidth;
+      const margin = 18 + rotationSafeZone;
+      const maxX = Math.max(fieldWidth - width - margin * 2, 1);
+      return margin + Math.random() * maxX;
+    }
+
+    function spawnFlower() {
+      if (!playing || paused) return;
+      if (flowersCollected >= TARGET_FLOWERS || activeFlowers >= MAX_ACTIVE_FLOWERS) return;
+
+      const item = document.createElement("button");
+      item.className = "falling flower";
+      item.type = "button";
+      item.setAttribute("aria-label", "троянда");
+
+      const size = window.innerWidth < 520 ? 68 : 78;
+      const duration = 5 + Math.random() * 2.7;
+      const rotate = 180 + Math.floor(Math.random() * 220);
+
+      item.style.setProperty("--fall-rotate", `${rotate}deg`);
+      item.style.left = `${getSafeX(size, 24)}px`;
+      item.style.animationDuration = `${duration}s`;
+
+      activeFlowers += 1;
+
+      item.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        collectFlower(item);
+      }, { once: true });
+
+      item.addEventListener("animationend", () => {
+        if (item.isConnected) item.remove();
+        activeFlowers = Math.max(activeFlowers - 1, 0);
+      });
+
+      field.appendChild(item);
+    }
+
+    function spawnLetter() {
+      if (!playing || paused) return;
+      if (lettersRead >= getUnlockedLetterCount() || activeLetters >= MAX_ACTIVE_LETTERS) return;
+
+      const index = getNextGreetingIndex();
+      if (index === null) return;
+
+      const item = document.createElement("button");
+      item.className = "falling letter";
+      item.type = "button";
+      item.textContent = greetings[index];
+      item.dataset.index = String(index);
+      item.setAttribute("aria-label", "лист з привітанням");
+
+      const width = window.innerWidth < 520 ? 160 : 190;
+      const duration = letterBurstStarted ? 10.5 + Math.random() * 3 : 8 + Math.random() * 3.2;
+      const rotate = Math.random() * 16 - 8;
+      const fallRotate = 160 + Math.floor(Math.random() * 130);
+
+      item.style.left = `${getSafeX(width, 46)}px`;
+      item.style.animationDuration = `${duration}s`;
+      item.style.transform = `rotate(${rotate}deg)`;
+      item.style.setProperty("--fall-rotate", `${fallRotate}deg`);
+
+      activeLetters += 1;
+      activeGreetingIndexes.add(index);
+
+      item.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        collectLetter(item, index);
+      }, { once: true });
+
+      item.addEventListener("animationend", () => {
+        if (item.isConnected) item.remove();
+        activeLetters = Math.max(activeLetters - 1, 0);
+        activeGreetingIndexes.delete(index);
+
+        if (playing && !paused && !readGreetingIndexes.has(index) && flowersCollected >= TARGET_FLOWERS) {
+          setTimeout(startLetterBurst, 160);
+        }
+      });
+
+      field.appendChild(item);
+    }
+
+    function getNextGreetingIndex() {
+      const unlockedCount = getUnlockedLetterCount();
+      const available = greetings
+        .map((_, index) => index)
+        .filter(index => index < unlockedCount)
+        .filter(index => !readGreetingIndexes.has(index) && !activeGreetingIndexes.has(index));
+
+      if (!available.length) return null;
+      return available[Math.floor(Math.random() * available.length)];
+    }
+
+    function collectFlower(item) {
+      if (!playing || paused || !item.isConnected) return;
+
+      const rect = item.getBoundingClientRect();
+      item.remove();
+      activeFlowers = Math.max(activeFlowers - 1, 0);
+
+      if (flowersCollected < TARGET_FLOWERS) {
+        flowersCollected += 1;
+        showPop("* ти чарівна", rect.left + rect.width / 2, rect.top + rect.height / 2);
+      }
+
+      updateHud();
+
+      startLetterBurst();
+
+      checkCompletion();
+    }
+
+    function collectLetter(item, index) {
+      if (!playing || paused || !item.isConnected) return;
+
+      item.remove();
+      activeLetters = Math.max(activeLetters - 1, 0);
+      activeGreetingIndexes.delete(index);
+
+      if (!readGreetingIndexes.has(index)) {
+        readGreetingIndexes.add(index);
+        lettersRead += 1;
+      }
+
+      updateHud();
+      openLetter(greetings[index]);
+    }
+
+    function openLetter(text) {
+      paused = true;
+      gameWrap.classList.add("paused");
+      openedLetterText.textContent = text;
+      letterModal.classList.add("active");
+      letterModal.setAttribute("aria-hidden", "false");
+    }
+
+    function releaseLetter() {
+      if (!playing) return;
+      paused = false;
+      gameWrap.classList.remove("paused");
+      letterModal.classList.remove("active");
+      letterModal.setAttribute("aria-hidden", "true");
+      updateHud();
+
+      startLetterBurst();
+
+      checkCompletion();
+    }
+
+    function checkCompletion() {
+      if (flowersCollected >= TARGET_FLOWERS && lettersRead >= greetings.length && !paused) {
+        endGame();
+      }
+    }
+
+    function showPop(text, x, y) {
+      const pop = document.createElement("div");
+      pop.className = "pop";
+      pop.textContent = text;
+      pop.style.left = `${x}px`;
+      pop.style.top = `${y}px`;
+      document.body.appendChild(pop);
+      setTimeout(() => pop.remove(), 800);
+    }
+
+    function endGame() {
+      if (!playing) return;
+      clearGame();
+      confettiBurst();
+      showScreen("win");
+    }
+
+    function confettiBurst() {
+      const colors = ["#d71920", "#ff4b55", "#ffffff", "#8e0810", "#ffd2d2"];
+      for (let i = 0; i < 120; i++) {
+        const piece = document.createElement("div");
+        piece.className = "confetti";
+        piece.style.left = `${Math.random() * 100}vw`;
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDuration = `${2.2 + Math.random() * 2.4}s`;
+        piece.style.animationDelay = `${Math.random() * .45}s`;
+        piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+        document.body.appendChild(piece);
+        setTimeout(() => piece.remove(), 5200);
+      }
+    }
+
+    document.getElementById("startBtn").addEventListener("click", startGame);
+    document.getElementById("rulesStartBtn").addEventListener("click", startGame);
+    document.getElementById("againBtn").addEventListener("click", startGame);
+    releaseLetterBtn.addEventListener("click", releaseLetter);
+    document.getElementById("rulesBtn").addEventListener("click", () => showScreen("rules"));
+    document.getElementById("backBtn").addEventListener("click", () => showScreen("start"));
+  </script>
+</body>
+</html>
