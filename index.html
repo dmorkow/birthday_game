@@ -18,6 +18,9 @@
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
+      /* Захист від випадкового виділення тексту під час швидкого тапання */
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     html, body {
@@ -81,6 +84,7 @@
       background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,245,245,.78));
       box-shadow: 0 24px 80px var(--shadow);
       backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
       border-radius: 32px;
       padding: clamp(24px, 6vw, 42px);
       text-align: center;
@@ -142,6 +146,12 @@
       z-index: 1;
     }
 
+    /* Дозволяємо виділення тексту лише всередині карток з листами, щоб можна було скопіювати привітання */
+    .letter-card-text {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
     .btns {
       display: flex;
       flex-wrap: wrap;
@@ -154,6 +164,7 @@
 
     button, .download-btn {
       appearance: none;
+      -webkit-appearance: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -169,6 +180,7 @@
       text-decoration: none;
       box-shadow: 0 14px 34px rgba(215,25,32,.25);
       transition: transform .18s ease, filter .18s ease;
+      touch-action: manipulation;
     }
 
     button:hover, .download-btn:hover {
@@ -235,6 +247,7 @@
       background: rgba(255,255,255,.82);
       border: 1px solid rgba(215,25,32,.16);
       backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       font-weight: 900;
       font-size: 14px;
       box-shadow: 0 12px 38px rgba(142,8,16,.13);
@@ -288,14 +301,15 @@
     .falling {
       position: absolute;
       top: -150px;
-      user-select: none;
       touch-action: manipulation;
       cursor: pointer;
       border: 0;
       animation-name: fall;
       animation-timing-function: linear;
       animation-fill-mode: forwards;
+      /* Включення GPU-прискорення для плавності на мобільних */
       will-change: transform;
+      transform: translateZ(0);
     }
 
     .flower {
@@ -348,7 +362,7 @@
     }
 
     @keyframes fall {
-      to { transform: translateY(calc(100dvh + 210px)) rotate(var(--fall-rotate, 260deg)); }
+      to { transform: translateY(calc(100dvh + 210px)) rotate(var(--fall-rotate, 260deg)) translateZ(0); }
     }
 
     .pop {
@@ -377,6 +391,7 @@
       padding: 20px;
       background: rgba(255, 235, 235, .62);
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .letter-modal.active {
@@ -386,6 +401,8 @@
 
     .letter-card {
       width: min(100%, 430px);
+      max-height: calc(100dvh - 40px); /* Захист від вилізання за межі екрана */
+      overflow-y: auto;
       border-radius: 28px;
       padding: 26px;
       background: linear-gradient(180deg, #fff, #fff0f0);
@@ -502,7 +519,7 @@
     }
 
     @keyframes confetti {
-      to { transform: translateY(110svh) rotate(720deg); opacity: 0; }
+      to { transform: translateY(110svh) rotate(720deg) translateZ(0); opacity: 0; }
     }
 
     .float-note {
@@ -691,13 +708,6 @@
   </style>
 </head>
 <body>
-  <!--
-    Фінальна механіка:
-    1. Гра відкриває підказку до кодового слова.
-    2. Квитки не зберігаються в GitHub.
-    3. Подруга повертається в Telegram-бота й пише кодове слово.
-    4. Бот перевіряє слово і надсилає квитки.
-  -->
 
   <div class="float-note">✿</div>
   <div class="float-note">♡</div>
@@ -783,7 +793,6 @@
   </main>
 
   <script>
-    // Налаштування гри
     const TARGET_FLOWERS = 101;
     const IS_MOBILE = window.matchMedia("(max-width: 520px)").matches;
     const SPAWN_EVERY_MS = IS_MOBILE ? 320 : 250;
@@ -803,7 +812,7 @@
     const scoreEl = document.getElementById("score");
     const lettersReadEl = document.getElementById("lettersRead");
     const lettersTotalEl = document.getElementById("lettersTotal");
-        const flowerBarEl = document.getElementById("flowerBar");
+    const flowerBarEl = document.getElementById("flowerBar");
     const letterBarEl = document.getElementById("letterBar");
     const letterModal = document.getElementById("letterModal");
     const openedLetterText = document.getElementById("openedLetterText");
@@ -845,6 +854,13 @@
 
     lettersTotalEl.textContent = greetings.length;
 
+    // Легкий вібровідгук (працює на Android девайсах) для соковитості геймплею
+    function triggerHaptic(ms = 12) {
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate(ms); } catch(e) {}
+      }
+    }
+
     function showScreen(name) {
       Object.values(screens).forEach(screen => screen.classList.remove("active"));
       gameWrap.classList.remove("active");
@@ -864,7 +880,6 @@
 
       flowerBarEl.style.width = `${Math.min((shownFlowers / TARGET_FLOWERS) * 100, 100)}%`;
       letterBarEl.style.width = `${Math.min((lettersRead / greetings.length) * 100, 100)}%`;
-
     }
 
     function startGame() {
@@ -903,6 +918,9 @@
       if (!playing || paused) return;
 
       if (flowersCollected >= TARGET_FLOWERS) {
+        // Оптимізація: якщо квіти зібрані, очищуємо інтервал, щоб процесор телефона відпочивав
+        clearInterval(spawnTimer);
+        spawnTimer = null;
         startLetterBurst();
         checkCompletion();
         return;
@@ -919,7 +937,7 @@
     }
 
     function startLetterBurst() {
-      if (lettersRead >= greetings.length) return;
+      if (!playing || paused || lettersRead >= greetings.length) return;
       letterBurstStarted = true;
 
       const unlockedCount = getUnlockedLetterCount();
@@ -1044,6 +1062,8 @@
     function collectFlower(item) {
       if (!playing || paused || !item.isConnected) return;
 
+      triggerHaptic(12); // Тактильний відгук на збір троянди
+
       const rect = item.getBoundingClientRect();
       item.remove();
       activeFlowers = Math.max(activeFlowers - 1, 0);
@@ -1055,13 +1075,19 @@
 
       updateHud();
 
-      startLetterBurst();
+      if (flowersCollected >= TARGET_FLOWERS) {
+        clearInterval(spawnTimer);
+        spawnTimer = null;
+        startLetterBurst();
+      }
 
       checkCompletion();
     }
 
     function collectLetter(item, index) {
       if (!playing || paused || !item.isConnected) return;
+
+      triggerHaptic(25); // Більш відчутна вібрація на відкриття листа
 
       item.remove();
       activeLetters = Math.max(activeLetters - 1, 0);
@@ -1092,7 +1118,9 @@
       letterModal.setAttribute("aria-hidden", "true");
       updateHud();
 
-      startLetterBurst();
+      if (flowersCollected >= TARGET_FLOWERS) {
+        startLetterBurst();
+      }
 
       checkCompletion();
     }
@@ -1141,6 +1169,13 @@
     releaseLetterBtn.addEventListener("click", releaseLetter);
     document.getElementById("rulesBtn").addEventListener("click", () => showScreen("rules"));
     document.getElementById("backBtn").addEventListener("click", () => showScreen("start"));
+
+    // Блокування базового системного рефрешу сторінки "pull-to-refresh" під час гри
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+        if (playing) e.preventDefault();
+      }
+    });
   </script>
 </body>
 </html>
