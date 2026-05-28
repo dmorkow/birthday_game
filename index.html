@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Подарунок відкриється після гри</title>
   <style>
     :root {
@@ -22,6 +22,7 @@
 
     html, body {
       margin: 0;
+      width: 100%;
       min-height: 100%;
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
@@ -31,6 +32,7 @@
         linear-gradient(135deg, #fff, #ffe8e8 46%, #fff);
       color: var(--ink);
       overflow: hidden;
+      overscroll-behavior: none;
     }
 
     body::before {
@@ -48,6 +50,7 @@
     .app {
       width: min(100vw, 760px);
       min-height: 100svh;
+      min-height: 100dvh;
       margin: 0 auto;
       position: relative;
       display: grid;
@@ -73,6 +76,7 @@
     }
 
     .card {
+      width: 100%;
       border: 1px solid rgba(215,25,32,.16);
       background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,245,245,.78));
       box-shadow: 0 24px 80px var(--shadow);
@@ -112,7 +116,7 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(34px, 9vw, 64px);
+      font-size: clamp(32px, 8vw, 64px);
       line-height: .95;
       letter-spacing: -.06em;
       color: var(--ink);
@@ -150,6 +154,9 @@
 
     button, .download-btn {
       appearance: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       border: 0;
       cursor: pointer;
       color: white;
@@ -187,6 +194,7 @@
     .game-wrap {
       width: 100vw;
       height: 100svh;
+      height: 100dvh;
       position: fixed;
       inset: 0;
       overflow: hidden;
@@ -206,7 +214,7 @@
       position: fixed;
       z-index: 10;
       left: 50%;
-      top: 14px;
+      top: max(14px, env(safe-area-inset-top));
       transform: translateX(-50%);
       width: min(calc(100vw - 28px), 720px);
       display: grid;
@@ -243,7 +251,7 @@
       position: fixed;
       z-index: 10;
       left: 50%;
-      top: 66px;
+      top: calc(max(14px, env(safe-area-inset-top)) + 52px);
       transform: translateX(-50%);
       width: min(calc(100vw - 36px), 680px);
       display: grid;
@@ -340,7 +348,7 @@
     }
 
     @keyframes fall {
-      to { transform: translateY(calc(100svh + 210px)) rotate(var(--fall-rotate, 260deg)); }
+      to { transform: translateY(calc(100dvh + 210px)) rotate(var(--fall-rotate, 260deg)); }
     }
 
     .pop {
@@ -517,12 +525,168 @@
     }
 
     @media (max-width: 520px) {
-      .app { padding: 14px; }
-      .card { border-radius: 26px; }
-      .hud { grid-template-columns: 1fr; top: 10px; }
-      .progress-stack { top: 154px; }
-      .letter { width: 160px; min-height: 110px; font-size: 13px; }
-      .ticket-bottom { grid-template-columns: 1fr; }
+      .app {
+        width: 100vw;
+        min-height: 100dvh;
+        padding: max(12px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+        place-items: center;
+      }
+
+      .screen {
+        width: 100%;
+      }
+
+      .card {
+        border-radius: 24px;
+        padding: 24px 18px;
+        max-height: calc(100dvh - 28px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .kicker {
+        font-size: 10px;
+        letter-spacing: .11em;
+        margin-bottom: 14px;
+        padding: 7px 12px;
+      }
+
+      h1 {
+        font-size: clamp(34px, 12vw, 48px);
+        line-height: .96;
+        letter-spacing: -.055em;
+      }
+
+      p {
+        font-size: 15px;
+        line-height: 1.45;
+        margin-top: 16px;
+      }
+
+      .btns {
+        margin-top: 22px;
+        gap: 10px;
+      }
+
+      button, .download-btn {
+        width: 100%;
+        min-height: 52px;
+        padding: 14px 18px;
+        font-size: 15px;
+      }
+
+      .ghost-btn {
+        width: 100%;
+      }
+
+      .hint {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .hud {
+        top: max(8px, env(safe-area-inset-top));
+        width: calc(100vw - 16px);
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .pill {
+        min-height: 38px;
+        padding: 7px 8px;
+        font-size: 13px;
+        gap: 5px;
+      }
+
+      .pill small {
+        font-size: 11px;
+      }
+
+      .progress-stack {
+        top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+        width: calc(100vw - 22px);
+        gap: 6px;
+      }
+
+      .progress {
+        height: 8px;
+      }
+
+      .flower {
+        width: 64px;
+        height: 64px;
+        font-size: 54px;
+        filter: drop-shadow(0 8px 12px rgba(142,8,16,.16));
+      }
+
+      .letter {
+        width: min(74vw, 245px);
+        min-height: 96px;
+        padding: 14px 13px;
+        border-radius: 14px;
+        font-size: 13px;
+        line-height: 1.28;
+      }
+
+      .letter-modal {
+        padding: max(14px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+      }
+
+      .letter-card {
+        width: 100%;
+        max-width: 390px;
+        border-radius: 24px;
+        padding: 22px 18px;
+      }
+
+      .letter-card-text {
+        font-size: clamp(24px, 9vw, 32px);
+        line-height: 1.12;
+      }
+
+      .ticket {
+        margin-top: 22px;
+        padding: 18px;
+        border-radius: 20px;
+      }
+
+      .value {
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      .ticket-bottom {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .card {
+        padding: 22px 15px;
+      }
+
+      h1 {
+        font-size: clamp(31px, 11vw, 42px);
+      }
+
+      p {
+        font-size: 14px;
+      }
+
+      .pill {
+        font-size: 12px;
+      }
+
+      .flower {
+        width: 58px;
+        height: 58px;
+        font-size: 49px;
+      }
+
+      .letter {
+        width: min(78vw, 230px);
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -621,8 +785,9 @@
   <script>
     // Налаштування гри
     const TARGET_FLOWERS = 101;
-    const SPAWN_EVERY_MS = 250;
-    const MAX_ACTIVE_FLOWERS = 42;
+    const IS_MOBILE = window.matchMedia("(max-width: 520px)").matches;
+    const SPAWN_EVERY_MS = IS_MOBILE ? 320 : 250;
+    const MAX_ACTIVE_FLOWERS = IS_MOBILE ? 26 : 42;
     const MAX_ACTIVE_LETTERS = 4;
     const FIRST_LETTER_AFTER_FLOWERS = 3;
     const LETTER_UNLOCK_STEP = 5;
@@ -743,7 +908,7 @@
         return;
       }
 
-      const flowerCount = 3 + Math.floor(Math.random() * 4);
+      const flowerCount = IS_MOBILE ? 2 + Math.floor(Math.random() * 3) : 3 + Math.floor(Math.random() * 4);
       for (let i = 0; i < flowerCount; i++) {
         setTimeout(spawnFlower, i * 55);
       }
@@ -781,7 +946,7 @@
 
     function getSafeX(width, rotationSafeZone = 32) {
       const fieldWidth = field.clientWidth || window.innerWidth;
-      const margin = 18 + rotationSafeZone;
+      const margin = (IS_MOBILE ? 10 : 18) + rotationSafeZone;
       const maxX = Math.max(fieldWidth - width - margin * 2, 1);
       return margin + Math.random() * maxX;
     }
@@ -795,8 +960,8 @@
       item.type = "button";
       item.setAttribute("aria-label", "троянда");
 
-      const size = window.innerWidth < 520 ? 68 : 78;
-      const duration = 5 + Math.random() * 2.7;
+      const size = IS_MOBILE ? 64 : 78;
+      const duration = IS_MOBILE ? 4.2 + Math.random() * 2.1 : 5 + Math.random() * 2.7;
       const rotate = 180 + Math.floor(Math.random() * 220);
 
       item.style.setProperty("--fall-rotate", `${rotate}deg`);
@@ -832,12 +997,14 @@
       item.dataset.index = String(index);
       item.setAttribute("aria-label", "лист з привітанням");
 
-      const width = window.innerWidth < 520 ? 160 : 190;
-      const duration = letterBurstStarted ? 10.5 + Math.random() * 3 : 8 + Math.random() * 3.2;
+      const width = IS_MOBILE ? Math.min(window.innerWidth * 0.74, 245) : 190;
+      const duration = letterBurstStarted
+        ? (IS_MOBILE ? 11.5 + Math.random() * 3 : 10.5 + Math.random() * 3)
+        : (IS_MOBILE ? 9.5 + Math.random() * 3 : 8 + Math.random() * 3.2);
       const rotate = Math.random() * 16 - 8;
       const fallRotate = 160 + Math.floor(Math.random() * 130);
 
-      item.style.left = `${getSafeX(width, 46)}px`;
+      item.style.left = `${getSafeX(width, IS_MOBILE ? 18 : 46)}px`;
       item.style.animationDuration = `${duration}s`;
       item.style.transform = `rotate(${rotate}deg)`;
       item.style.setProperty("--fall-rotate", `${fallRotate}deg`);
